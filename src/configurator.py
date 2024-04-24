@@ -4,7 +4,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-from base.singlton import Singlton
+from .base.singlton import Singlton
 
 
 class Configurator(Singlton):
@@ -39,12 +39,12 @@ class Configurator(Singlton):
         load_dotenv(_env)
 
         def wrapper(class_model):
-            def get_field(field_name, type_, value=None):
-
+            def get_field(field_name, type_, value=None, default=None):
                 return {
                     "name": field_name,
                     "value": value,
-                    "type_": type_
+                    "type_": type_,
+                    "default": default
                 }
 
             _fields = {}
@@ -60,18 +60,28 @@ class Configurator(Singlton):
 
                 __field = _fields.get(key)
                 if __field:
-                    if self.validate_type(__field["type_"], value):
-                        _fields[key] = get_field(key, __field["type_"], value)
+                    if not self.validate_type(__field["type_"], value):
+                        raise TypeError(
+                            f"Types do not match. Your type {type(value)}; annotated = {__field['type_']}")
+                    _fields[key] = get_field(
+                        key, __field["type_"], default=value)
                 else:
                     _fields[key] = get_field(key, type(value), value)
 
             for name, item in _fields.items():
 
-                _value = item.get("value")
-                if _value is None and self._awalable_env_types.get(item["type_"]):
-                    _value = item["type_"](os.getenv(name))
+                _value = None
+                if self._awalable_env_types.get(item["type_"]):
+                    _data = os.getenv(name)
+                    if _data is not None:
+                        _value = item["type_"](_data)
+                    else:
+                        _value = item.get("default")
+                else:
+                    _value = item.get("default")
 
-                setattr(class_model, name, _value)
+                if _value is not None:
+                    setattr(class_model, name, _value)
             return class_model
 
         return wrapper
