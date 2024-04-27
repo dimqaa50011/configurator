@@ -6,7 +6,7 @@ conf = Configurator(env_path=str(
     Path(__file__).resolve().parent / "example.env"))
 
 
-@ conf.env_model()
+@conf.env_model()
 class DbConf:
     DB_SCHEMA: str
     DB_USER: str
